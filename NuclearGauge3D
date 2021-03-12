@@ -1,0 +1,73 @@
+// ImageJ macro to measure nuclei using 3D OC
+// done for Carolina Pereira CHR lab - by Gaby G Martins v210311b
+// instead of a robust watershed method, I opted for manual splitting of touching nuclei using the paintbrush
+
+dir = getDirectory("image");
+title = getTitle();
+run("Duplicate...", "title=img duplicate");
+selectWindow(title);
+resetMinAndMax();
+slices = nSlices();
+//clears 1st and last slices to avoid exclusion when touching Z edges
+setBackgroundColor(0, 0, 0);
+setSlice(1); run("Select All"); run("Clear", "slice");
+setSlice(slices); run("Next Slice [>]"); run("Select All"); run("Clear", "slice");
+// allows user to see touching nuclei and manually split them
+run("Z Project...", "projection=[Max Intensity]");
+rename("tempMIP");
+setAutoThreshold("Li dark");
+run("Convert to Mask");
+run("Fill Holes");
+run("Paintbrush Tool Options...", "brush=5");
+waitForUser("pick brush tool and alt+draw to separate touching nuclei, then [OK]"); 
+run("Create Selection");
+selectWindow(title);
+run("Restore Selection");
+setBackgroundColor(0, 0, 0);
+run("Clear Outside", "stack");
+close("tempMIP");
+
+//proceeed to segment nuclei
+run("Select None");
+setAutoThreshold("Li dark stack");
+run("Convert to Mask", "method=Li background=Dark black");
+
+//tried a few methods to watershed binarised mask without success...
+// make MIP name it mask, gamma 0.5, median 5, threshold intermodes, 5pix brush draw with black (alt+click) between touching cells, 
+// make selection, selection inverse, restore in stack, clear in all slices
+// then proceed
+
+setOption("BlackBackground", true);
+run("Median...", "radius=3 stack");
+run("Fill Holes", "stack");
+
+// sets and runs 3D object counter
+run("3D OC Options", "volume surface dots_size=5 font_size=20 store_results_within_a_table_named_after_the_image_(macro_friendly) redirect_to=none");
+run("3D Objects Counter", "threshold=50 min.=5000 max.=135790592 exclude_objects_on_edges objects statistics");
+// creates a preview to confirm segmentation and 3D OC is OK
+// user then closes windows 
+selectWindow("img");
+run("Z Project...", "projection=[Max Intensity]");
+run("Enhance Contrast", "saturated=0.35");
+run("Apply LUT");
+run("8-bit");
+selectWindow("Objects map of " + title);
+run("Z Project...", "projection=[Max Intensity]");
+rename("objsMIP");
+run("Enhance Contrast", "saturated=0.35");
+run("Apply LUT");
+run("Divide...", "value=3");
+run("Merge Channels...", "c1=objsMIP c4=MAX_img create");
+close("img");
+close("MAX_img");
+close("objsMIP");
+
+// here macro asks user to check merged image and results, then saves and closes windows
+waitForUser("Check that results are good & [OK], otherwise 'Esc' to avoid saving results and closing windows");
+close(title);
+close("Composite");
+close("Objects map of " + title); 
+selectWindow("Statistics for " + title);
+saveAs("Results", dir + title +" - statistics.txt");
+close(title + " - statistics.txt");
+open();
