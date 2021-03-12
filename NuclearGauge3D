@@ -1,6 +1,7 @@
 // ImageJ macro to measure nuclei using 3D OC - v210311b
 // done for Carolina Pereira CHR lab @IGC2021, written by Gaby G Martins
 // instead of a robust watershed method, I opted for manual splitting of touching nuclei using the paintbrush
+// https://github.com/gabyjgm/MyMicroMacros
 
 dir = getDirectory("image");
 title = getTitle();
